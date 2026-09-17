@@ -144,7 +144,7 @@
           register: bootstrap_result
           changed_when: bootstrap_result.rc == 0
           failed_when: bootstrap_result.rc != 0
-          timeout: 20700
+          timeout: 20400
 
       rescue:
         - name: Show bootstrap failure details

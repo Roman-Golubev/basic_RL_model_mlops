@@ -21,13 +21,13 @@ def bootstrap_calculation(api_num=API_NUM):
     for _ in range(n_episodes):
         # в расчёте используется обученная Q_s_a
         results_dict = {
-            'Q_s_a': None, 'ret_q': None, 'Pus': None, 'tem_distr': None,
-            'fin_num': None, 'step_num_final': None,
+            'Q_s_a': None, 'ret_q': None, 'Pus_final': None, 'tem_distr_final': None,
+            'fin_num_final': None, 'step_num_final': None,
             'states_lst': None, 'actions_lst': None, 'rewards_lst': None, 'del_Pus_lst': None
         }
         (
-            results_dict['Q_s_a'], results_dict['ret_q'], results_dict['Pus'], results_dict['tem_distr'],
-            results_dict['fin_num'], _, results_dict['step_num_final'],
+            results_dict['Q_s_a'], results_dict['ret_q'], results_dict['Pus_final'], results_dict['tem_distr_final'],
+            results_dict['fin_num_final'], _, results_dict['step_num_final'],
             results_dict['states_lst'], results_dict['actions_lst'], results_dict['rewards_lst'], results_dict['del_Pus_lst']
         ) = RL_func(
             params_df.iloc[0], fins_df,
@@ -38,7 +38,7 @@ def bootstrap_calculation(api_num=API_NUM):
             n_episodes = 1,
             seed = 42,
             epsilon_decay={'decay_rate': 0.992, 'min_epsilon': 0.2},
-            Q = output_df.loc[0, 'Q']
+            Q = output_df.loc[len(output_df)-1, 'Q_s_a']
         )
 
         # сохранение результатов теущей итерации
