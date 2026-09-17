@@ -8,6 +8,7 @@ from scripts.pipeline_config import DATA_INPUT_DIR, DATA_OUTPUT_DIR, API_CONFIGS
 def bootstrap_calculation(api_num=API_NUM):
     cfg = API_CONFIGS[api_num]
     input_path = os.path.join(DATA_INPUT_DIR, cfg["params_file"])
+    output_dir = os.path.join(DATA_OUTPUT_DIR, cfg["output_dir"])
     output_path = os.path.join(DATA_OUTPUT_DIR, cfg["output_file"])
 
     params_df = pd.read_csv(input_path)
