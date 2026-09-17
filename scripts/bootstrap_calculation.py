@@ -16,7 +16,7 @@ def bootstrap_calculation(api_num=API_NUM):
     fins_df = pd.read_csv(csv_path)
     output_df = pd.read_pickle(output_path)
 
-    n_episodes = 20
+    n_episodes = 3
     # продолжительность каждой итерации - один эпизод
     for _ in range(n_episodes):
         # в расчёте используется обученная Q_s_a
@@ -38,7 +38,7 @@ def bootstrap_calculation(api_num=API_NUM):
             n_episodes = 1,
             seed = 42,
             epsilon_decay={'decay_rate': 0.992, 'min_epsilon': 0.2},
-            Q = output_df.iloc[-1, 0]
+            Q = output_df.loc[0, 'Q']
         )
 
         # сохранение результатов теущей итерации
