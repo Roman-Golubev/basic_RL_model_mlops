@@ -9,7 +9,7 @@ def bootstrap_calculation(api_num=API_NUM):
     cfg = API_CONFIGS[api_num]
     input_path = os.path.join(DATA_INPUT_DIR, cfg["params_file"])
     output_dir = os.path.join(DATA_OUTPUT_DIR, cfg["output_dir"])
-    output_path = os.path.join(DATA_OUTPUT_DIR, cfg["output_file"])
+    output_path = os.path.join(output_dir, cfg["output_file"])
 
     params_df = pd.read_csv(input_path)
     csv_path = os.path.join(DATA_INPUT_DIR, "fins.csv")
