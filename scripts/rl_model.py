@@ -9,162 +9,124 @@ from scripts.properties import (
 
 
 def RL_func(
-        init_param_row, fins_df, alpha, gamma, epsilon, max_steps, n_episodes, seed, epsilon_decay=None,
-        Q=None, tem_distr_0=None, fin_num_0=None
+    init_param_row, fins_df, alpha, gamma, epsilon_now, seed,
+    total_reward, steps_total, Pus_prev, Q, tem_distr, fin_num,
+    s, Pus_final
 ):
     rng = np.random.default_rng(seed)
     cur_row = init_param_row.copy()
     Pus_0 = cur_row['Pus_full']
     fin_type = cur_row['fin_type']
+    fin_num_0 = fins_df[fins_df['fin_type'] == fin_type].index[0]
+    tem_distr_0 = np.array([100] * 10 * 3).reshape(3, 10)
 
-    if Q is None:
-        n_states, n_actions = 3, 62
-        Q = np.zeros((n_states, n_actions))
-    if tem_distr_0 is None:
-        tem_distr_0 = np.array([100] * 10 * 3).reshape(3, 10)
-    if fin_num_0 is None:
-        fin_num_0 = fins_df[fins_df['fin_type'] == fin_type].index[0]
-
-    episode_returns = []
     states_lst = []
     actions_lst = []
     rewards_lst = []
     del_Pus_lst = []
-
-    Pus_final = Pus_0
-    tem_distr_final = np.array([100] * 10 * 3).reshape(3, 10)
-    fin_num_final = fin_num_0
-    epis_num_final = -1
+    tem_distr_final = np.array([-1] * 10 * 3).reshape(3, 10)
+    fin_num_final = -1
     step_num_final = -1
-
-    for episode in range(n_episodes):
-        if epsilon_decay is None:
-            epsilon_now = epsilon
+    for step in range(100):
+        # выбор действия
+        if rng.random() < epsilon_now:
+            a = int(rng.integers(Q.shape[1]))
         else:
-            epsilon_now = max(
-                epsilon_decay['min_epsilon'],
-                epsilon * (epsilon_decay['decay_rate'] ** episode)
-            )
-        # reset исходного состояния
-        s = 0
-        tem_distr = tem_distr_0.copy()
-        fin_num = fin_num_0
-        total_reward = 0
-        Pus_prev = 0
-        cur_states_lst = []
-        cur_actions_lst = []
-        cur_rewards_lst = []
-        cur_del_Pus_lst = []
+            a = int(np.argmax(Q[s]))
 
-        for step in range(max_steps):
-            # выбор действия
-            if rng.random() < epsilon_now:
-                a = int(rng.integers(Q.shape[1]))
+        # выполнение шага
+        if a <= 59:
+            incr = a%2 == 0
+            idx = a//2
+            idx_arr = np.zeros(30)
+            idx_arr[idx] = 1
+            idx_arr = idx_arr.reshape(3, 10).astype(bool)
+            cur_param = tem_distr[idx_arr][0]
+            if incr:
+                if cur_param < 100:
+                    tem_distr[idx_arr] += 10
             else:
-                a = int(np.argmax(Q[s]))
-
-            # выполнение шага
-            if a <= 59:
-                incr = a%2 == 0
-                idx = a//2
-                idx_arr = np.zeros(30)
-                idx_arr[idx] = 1
-                idx_arr = idx_arr.reshape(3, 10).astype(bool)
-                cur_param = tem_distr[idx_arr][0]
-                if incr:
-                    if cur_param < 100:
-                        tem_distr[idx_arr] += 10
-                else:
-                    if cur_param > 40:
-                        tem_distr[idx_arr] -= 10
+                if cur_param > 40:
+                    tem_distr[idx_arr] -= 10
+        else:
+            if a == 60:
+                if fin_num < 8:
+                    fin_num += 1
             else:
-                if a == 60:
-                    if fin_num < 8:
-                        fin_num += 1
-                else:
-                    if fin_num > 0:
-                        fin_num -= 1
-                cur_row['fin_type'] = fins_df.loc[fin_num, 'fin_type']
-                cur_row['hhm'] = fins_df.loc[fin_num, 'hhm']
-                cur_row['dekvhm'] = fins_df.loc[fin_num, 'dekvhm']
-                cur_row['shaghm'] = fins_df.loc[fin_num, 'shaghm']
-                cur_row['deltahm'] = fins_df.loc[fin_num, 'deltahm']
-                cur_row['ledhm'] = fins_df.loc[fin_num, 'ledhm']
-            results_dict = rl_model(cur_row, tem_distr, full_design=False)
-            if results_dict['message'] == 'Расчёт выполнен':
-                Pus_cur = results_dict['Pus']
-                delta_Pus = (Pus_cur - Pus_0) * 100 / Pus_0
-                if delta_Pus <= -15:
-                    # возврат в исходно состояние
-                    s_next, r, done = 0, -50, False
-                    tem_distr = tem_distr_0.copy()
-                    fin_num = fin_num_0
-                    Pus_prev = 0
-                if delta_Pus > -15 and delta_Pus <= 0:
-                    Pus_prev = Pus_cur
-                    s_next, r, done = 0, -1, False
-                if delta_Pus > 0 and delta_Pus < 5:
-                    r = -1 if Pus_cur == Pus_prev else 1
-                    Pus_prev = Pus_cur
-                    s_next, done = 1, False
-                    # сохранение результата
-                    if Pus_cur > Pus_final:
-                        Pus_final = Pus_cur
-                        tem_distr_final = tem_distr.copy()
-                        fin_num_final = fin_num
-                        epis_num_final = episode
-                        step_num_final = step
-                if delta_Pus > 5 and delta_Pus < 15:
-                    r = -1 if Pus_cur == Pus_prev else 5
-                    Pus_prev = Pus_cur
-                    s_next, done = 2, False
-                    # сохранение результата
-                    if Pus_cur > Pus_final:
-                        Pus_final = Pus_cur
-                        tem_distr_final = tem_distr.copy()
-                        fin_num_final = fin_num
-                        epis_num_final = episode
-                        step_num_final = step
-                if delta_Pus >= 15:
-                    s_next, r, done = 2, 50, True
-                    # сохранение результата
-                    Pus_final = Pus_cur
-                    tem_distr_final = tem_distr.copy()
-                    fin_num_final = fin_num
-                    epis_num_final = episode
-                    step_num_final = step
-            else:
+                if fin_num > 0:
+                    fin_num -= 1
+            cur_row['fin_type'] = fins_df.loc[fin_num, 'fin_type']
+            cur_row['hhm'] = fins_df.loc[fin_num, 'hhm']
+            cur_row['dekvhm'] = fins_df.loc[fin_num, 'dekvhm']
+            cur_row['shaghm'] = fins_df.loc[fin_num, 'shaghm']
+            cur_row['deltahm'] = fins_df.loc[fin_num, 'deltahm']
+            cur_row['ledhm'] = fins_df.loc[fin_num, 'ledhm']
+        results_dict = rl_model(cur_row, tem_distr, full_design=False)
+        if results_dict['message'] == 'Расчёт выполнен':
+            Pus_cur = results_dict['Pus']
+            delta_Pus = (Pus_cur - Pus_0) * 100 / Pus_0
+            if delta_Pus <= -15:
                 # возврат в исходно состояние
                 s_next, r, done = 0, -50, False
                 tem_distr = tem_distr_0.copy()
                 fin_num = fin_num_0
                 Pus_prev = 0
+            if delta_Pus > -15 and delta_Pus <= 0:
+                Pus_prev = Pus_cur
+                s_next, r, done = 0, -1, False
+            if delta_Pus > 0 and delta_Pus < 5:
+                r = -1 if Pus_cur == Pus_prev else 1
+                Pus_prev = Pus_cur
+                s_next, done = 1, False
+                # сохранение результата
+                if Pus_cur > Pus_final:
+                    Pus_final = Pus_cur
+                    tem_distr_final = tem_distr.copy()
+                    fin_num_final = fin_num
+                    step_num_final = step
+            if delta_Pus > 5 and delta_Pus < 15:
+                r = -1 if Pus_cur == Pus_prev else 5
+                Pus_prev = Pus_cur
+                s_next, done = 2, False
+                # сохранение результата
+                if Pus_cur > Pus_final:
+                    Pus_final = Pus_cur
+                    tem_distr_final = tem_distr.copy()
+                    fin_num_final = fin_num
+                    step_num_final = step
+            if delta_Pus >= 15:
+                s_next, r, done = 2, 50, True
+                # сохранение результата
+                Pus_final = Pus_cur
+                tem_distr_final = tem_distr.copy()
+                fin_num_final = fin_num
+                step_num_final = step
+        else:
+            # возврат в исходно состояние
+            s_next, r, done = 0, -50, False
+            tem_distr = tem_distr_0.copy()
+            fin_num = fin_num_0
+            Pus_prev = 0
+            delta_Pus = -100
 
-                delta_Pus = -100
+        states_lst.append(s)
+        actions_lst.append(a)
+        rewards_lst.append(r)
+        del_Pus_lst.append(delta_Pus)
 
-            cur_states_lst.append(s)
-            cur_actions_lst.append(a)
-            cur_rewards_lst.append(r)
-            cur_del_Pus_lst.append(delta_Pus)
+        # Обновление Q-значений
+        total_reward += r
+        target = r if done else r + gamma * np.max(Q[s_next])
+        Q[s, a] += alpha * (target - Q[s, a])
+        s = s_next
+        if done:
+            break
 
-            # Обновление Q-значений
-            total_reward += r
-            target = r if done else r + gamma * np.max(Q[s_next])
-            Q[s, a] += alpha * (target - Q[s, a])
-            s = s_next
-            if done:
-                break
-
-        episode_returns.append(total_reward)
-        states_lst.append(cur_states_lst)
-        actions_lst.append(cur_actions_lst)
-        rewards_lst.append(cur_rewards_lst)
-        del_Pus_lst.append(cur_del_Pus_lst)
-
-    ret_q = np.array(episode_returns)
+    steps_total += 100
     return (
-        Q, ret_q, Pus_final, tem_distr_final, fin_num_final, epis_num_final, step_num_final,
-        states_lst, actions_lst, rewards_lst, del_Pus_lst
+        Q, tem_distr, fin_num, Pus_cur, total_reward, steps_total, s, done,
+        states_lst, actions_lst, rewards_lst, del_Pus_lst,
+        Pus_final, tem_distr_final, fin_num_final, step_num_final
     )
 
 
