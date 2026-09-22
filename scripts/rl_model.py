@@ -27,7 +27,7 @@ def RL_func(
     tem_distr_final = np.array([-1] * 10 * 3).reshape(3, 10)
     fin_num_final = -1
     step_num_final = -1
-    for step in range(100):
+    for step in range(50):
         # выбор действия
         if rng.random() < epsilon_now:
             a = int(rng.integers(Q.shape[1]))
@@ -46,7 +46,7 @@ def RL_func(
                 if cur_param < 100:
                     tem_distr[idx_arr] += 10
             else:
-                if cur_param > 40:
+                if cur_param >= 40:
                     tem_distr[idx_arr] -= 10
         else:
             if a == 60:
@@ -74,7 +74,7 @@ def RL_func(
             if delta_Pus > -15 and delta_Pus <= 0:
                 Pus_prev = Pus_cur
                 s_next, r, done = 0, -1, False
-            if delta_Pus > 0 and delta_Pus < 5:
+            if delta_Pus > 0 and delta_Pus <= 5:
                 r = -1 if Pus_cur == Pus_prev else 1
                 Pus_prev = Pus_cur
                 s_next, done = 1, False
@@ -84,7 +84,7 @@ def RL_func(
                     tem_distr_final = tem_distr.copy()
                     fin_num_final = fin_num
                     step_num_final = step
-            if delta_Pus > 5 and delta_Pus < 15:
+            if delta_Pus > 5 and delta_Pus <= 15:
                 r = -1 if Pus_cur == Pus_prev else 5
                 Pus_prev = Pus_cur
                 s_next, done = 2, False
@@ -94,7 +94,7 @@ def RL_func(
                     tem_distr_final = tem_distr.copy()
                     fin_num_final = fin_num
                     step_num_final = step
-            if delta_Pus >= 15:
+            if delta_Pus > 15:
                 s_next, r, done = 2, 50, True
                 # сохранение результата
                 Pus_final = Pus_cur
@@ -122,7 +122,7 @@ def RL_func(
         if done:
             break
 
-    steps_total += 100
+    steps_total += 50
     return (
         Q, tem_distr, fin_num, Pus_cur, total_reward, steps_total, s, done,
         states_lst, actions_lst, rewards_lst, del_Pus_lst,

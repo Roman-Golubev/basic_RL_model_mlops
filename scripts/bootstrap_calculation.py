@@ -15,9 +15,9 @@ def bootstrap_calculation(api_num=API_NUM, epsilon=0.7, min_epsilon=0.2, decay_r
     params_df = pd.read_csv(input_path)
     csv_path = os.path.join(DATA_INPUT_DIR, "fins.csv")
     fins_df = pd.read_csv(csv_path)
-    
-    # 100 итераций, распределяемых по эпизодам
-    for _ in range(4):
+
+    # 50 итераций, распределяемых по эпизодам
+    for _ in range(50):
         results_dict = {
             'Q_s_a': None, 'tem_distr': None, 'fin_num': None, 'Pus_prev': None,
             'total_reward': None, 'steps_total': None, 's_next': None, 'done': None,
@@ -32,7 +32,7 @@ def bootstrap_calculation(api_num=API_NUM, epsilon=0.7, min_epsilon=0.2, decay_r
         steps_total = output_df.loc[len(output_df)-1, 'steps_total']
         done = output_df.loc[len(output_df)-1, 'done']
         # продолжение текущего эпизода
-        if steps_total < 200 and not done:
+        if steps_total < 700 and not done:
             # начало первого эпизода
             if steps_total == 0:
                 total_reward = 0
@@ -63,7 +63,7 @@ def bootstrap_calculation(api_num=API_NUM, epsilon=0.7, min_epsilon=0.2, decay_r
             fin_num = fins_df[fins_df['fin_type'] == fin_type].index[0]
         results_dict['episode'] = episode
 
-        # Выполнение шагов RL-агентом (100 шагов или меньше)
+        # Выполнение шагов RL-агентом (50 шагов или меньше)
         # используется предобученная Q_s_a
         Q = output_df.loc[len(output_df)-1, 'Q_s_a'].copy()
         epsilon_now = max(
